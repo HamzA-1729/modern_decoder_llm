@@ -1,0 +1,50 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Deep learning weights & checkpoints
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+checkpoints/
+weights/
+
+# Data and large artifacts
+data/
+raw_data/
+processed_data/
+*.h5
+*.hdf5
+*.tar.gz
+*.zip
+
+# Experiment outputs, logs & telemetry
+outputs/
+logs/
+wandb/
+runs/
+.tensorboard/
+
+# Tooling & IDEs
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.vscode/
+.idea/
+.DS_Store
+
+# Environment & credentials
+.env
+.env.*
+!*.example
