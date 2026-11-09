@@ -1,0 +1,42 @@
+# ==============================================================================
+# Model & Training Configuration: Llama-3-Style Decoder LLM on TinyStories
+# ==============================================================================
+
+# Deterministic random seed
+seed: 42
+
+# Model Architecture Specifications
+model:
+  vocab_size: 4096          # Custom Byte-Level BPE (prevents OOV errors)
+  max_seq_len: 256          # Context window length
+  hidden_dim: 256           # Embedding dimension d
+  depth: 6                  # Number of Transformer decoder layers
+  n_heads: 8                # Query attention heads (256 / 8 = 32 head_dim)
+  n_kv_heads: 2             # Key/Value heads (4:1 GQA grouping ratio)
+  head_dim: 32              # Dimension per head (d_k)
+  ffn_dim: 768              # Explicit SwiGLU expansion dimension
+  rope_theta: 10000.0       # Base frequency for RoPE (standard for 256 context)
+  tie_weights: true         # Tie output LM head with input token embeddings
+  norm_eps: 1.0e-6          # Epsilon for RMSNorm stability
+
+# Training & Optimization Protocol
+training:
+  batch_size: 16            # Micro-batch size per step
+  grad_accum_steps: 2       # Gradient accumulation steps (effective batch size = 32)
+  max_steps: 2500           # Total training steps for cosine decay schedule
+  lr: 3.0e-4                # Peak learning rate after warmup
+  min_lr: 1.0e-5            # Minimum learning rate at end of cosine decay
+  warmup_steps: 200         # Linear warmup steps
+  weight_decay: 0.1         # Applied only to 2D weight matrices (linear layers)
+  grad_clip: 1.0            # Maximum global gradient L2 norm
+  eval_interval: 250        # Evaluate on validation split every N steps
+  eval_steps: 50            # Number of validation batches to average
+  dataset: "roneneldan/TinyStories" # Pretraining corpus
+  num_workers: 2            # DataLoader subprocesses
+
+# Inference & Generation Defaults
+sampling:
+  temperature: 0.8          # Softmax temperature (0.0 = greedy)
+  top_p: 0.9                # Nucleus sampling probability threshold
+  max_new_tokens: 128       # Default token generation budget
+
