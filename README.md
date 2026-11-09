@@ -59,21 +59,21 @@ Input Token IDs: (B, T)
 ## 📚 Mathematical Formulations & Complexity
 
 ### 1. RMSNorm (Root Mean Square Normalization)
-$$\operatorname{RMS}(x) = \sqrt{\frac{1}{d} \sum_{i=1}^d x_i^2 + \epsilon}$$
-$$\operatorname{RMSNorm}(x) = \frac{x}{\operatorname{RMS}(x)} \odot \gamma$$
+$$\mathrm{RMS}(x) = \sqrt{\frac{1}{d} \sum_{i=1}^d x_i^2 + \epsilon}$$
+$$\mathrm{RMSNorm}(x) = \frac{x}{\mathrm{RMS}(x)} \odot \gamma$$
 
 Where $\gamma \in \mathbb{R}^d$ is a learnable scaling parameter initialized to 1.0, and $\epsilon = 10^{-6}$. Unlike standard LayerNorm, RMSNorm omits mean-subtraction, saving floating-point reductions while providing comparable empirical training stability.
 
-### 2. RoPE (Rotary Position Embeddings with `rotate_half`)
+### 2. RoPE (Rotary Position Embeddings with Half-Split Rotation)
 To match Llama-3's implementation and ensure open-weight alignment, embedding dimensions are split into two contiguous halves:
-$$\operatorname{rotate\_half}(x) = \operatorname{concat}\left( -x_{d_k/2 : d_k}, \; x_{0 : d_k/2} \right)$$
-$$\operatorname{RoPE}(x, m) = x \odot \cos(m \theta) + \operatorname{rotate\_half}(x) \odot \sin(m \theta)$$
+$$\mathcal{R}(x) = \left[ -x_{d_k/2 : d_k}, \; x_{0 : d_k/2} \right]$$
+$$\mathrm{RoPE}(x, m) = x \odot \cos(m \theta) + \mathcal{R}(x) \odot \sin(m \theta)$$
 
 Where $\theta_i = \theta_{\text{base}}^{-2i/d_k}$ with base frequency $\theta_{\text{base}} = 10,000.0$. For query at position $m$ and key at position $n$, the inner product $\mathbf{q}_m^T \mathbf{k}_n$ depends strictly on the relative distance $m - n$.
 
 ### 3. SwiGLU Feed-Forward Network
 All linear layers in the FFN are bias-free:
-$$\operatorname{SwiGLU}(x) = \left( \operatorname{SiLU}(x W_{\text{gate}}) \odot (x W_{\text{up}}) \right) W_{\text{down}}$$
+$$\mathrm{SwiGLU}(x) = \left( \mathrm{SiLU}(x W_{\text{gate}}) \odot (x W_{\text{up}}) \right) W_{\text{down}}$$
 
 Where $W_{\text{gate}}, W_{\text{up}} \in \mathbb{R}^{d \times d_{\text{ffn}}}$ and $W_{\text{down}} \in \mathbb{R}^{d_{\text{ffn}} \times d}$ with explicit $d_{\text{ffn}} = 768$.
 
@@ -81,7 +81,7 @@ Where $W_{\text{gate}}, W_{\text{up}} \in \mathbb{R}^{d \times d_{\text{ffn}}}$ 
 * **Query heads:** $H_Q = 8$, **Key/Value heads:** $H_{KV} = 2$ (grouping ratio $G = 4$).
 * **Cache Storage:** Only the raw, un-repeated keys and values ($H_{KV} = 2$) are stored in memory.
 * **Repetition:** After reading from cache, `torch.repeat_interleave(repeats=4, dim=1)` expands $K$ and $V$ to 8 heads immediately before computing attention against $Q$. This enforces a strict $4\times$ memory compression.
-* **Causal Mask Offset:** When prefilling with context offset, query at relative position $i$ sits at absolute position $\text{start\_pos} + i$.
+* **Causal Mask Offset:** When prefilling with context offset, query at relative position $i$ sits at absolute position `start_pos + i`.
 
 ### 5. Algorithmic Complexity: KV Cache vs. Naive Generation
 * **Without KV Cache (Full Prefix Recomputation):**
