@@ -79,6 +79,21 @@ $$\text{Memory} = 2 \cdot D \cdot H_{KV} \cdot d_k \cdot T \cdot B_{\text{elem}}
 | **Llama-3-8B** (Batch 16) | 32 | 8 | 128 | 8,192 | fp16 (2B) | **16.00 GiB** |
 | **Llama-3-8B** (Batch 1) | 32 | 8 | 128 | 131,072 | fp16 (2B) | **16.00 GiB** |
 
+### 3. TinyStories Pretraining Convergence (2,500 Steps, 16.3M Tokens)
+
+| Training Step | Learning Rate | Train Loss | Val Loss | Val Perplexity |
+| :---: | :---: | :---: | :---: | :---: |
+| **Step 0** | $0.00$ | $8.32$ | $8.32$ | $\approx 4,096.0$ |
+| **Step 250** | $3.00 \times 10^{-4}$ | $2.9128$ | $2.9521$ | $19.15$ |
+| **Step 500** | $2.88 \times 10^{-4}$ | $2.3437$ | $2.3265$ | $10.24$ |
+| **Step 1,000** | $2.22 \times 10^{-4}$ | $2.0610$ | $1.9862$ | $7.29$ |
+| **Step 1,500** | $1.26 \times 10^{-4}$ | $1.8494$ | $1.8393$ | $6.29$ |
+| **Step 2,000** | $4.26 \times 10^{-5}$ | $1.7358$ | $1.7652$ | $5.84$ |
+| **Step 2,500 (Final)** | $1.00 \times 10^{-5}$ | **1.7986** | **1.7412** | **5.70** |
+
+> [!NOTE]
+> Pretraining processed **16,298,657 tokens** across 50,000 TinyStories documents. In 2,500 steps, validation perplexity converged from $4,096.0 \to \mathbf{5.70}$ ($e^{1.7412}$), producing coherent, grammatically consistent narrative story generation. Model weights are preserved at `checkpoints/best_model.pt`.
+
 ---
 
 ## 📚 Mathematical Formulations & Complexity
