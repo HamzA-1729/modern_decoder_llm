@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Modern Decoder LLM from Scratch: Llama-3 Architecture in PyTorch"
+type: software
+authors:
+  - family-names: Sajid
+    given-names: Hamza
+repository-code: "https://github.com/HamzA-1729/modern_decoder_llm"
+license: MIT
+version: 0.1.0
+date-released: 2026-11-09
+

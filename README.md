@@ -59,21 +59,21 @@ Input Token IDs: (B, T)
 ## 📚 Mathematical Formulations & Complexity
 
 ### 1. RMSNorm (Root Mean Square Normalization)
-$$\text{RMS}(x) = \sqrt{\frac{1}{d} \sum_{i=1}^d x_i^2 + \epsilon}$$
-$$\text{RMSNorm}(x) = \frac{x}{\text{RMS}(x)} \odot \gamma$$
+$$\operatorname{RMS}(x) = \sqrt{\frac{1}{d} \sum_{i=1}^d x_i^2 + \epsilon}$$
+$$\operatorname{RMSNorm}(x) = \frac{x}{\operatorname{RMS}(x)} \odot \gamma$$
 
 Where $\gamma \in \mathbb{R}^d$ is a learnable scaling parameter initialized to 1.0, and $\epsilon = 10^{-6}$. Unlike standard LayerNorm, RMSNorm omits mean-subtraction, saving floating-point reductions while providing comparable empirical training stability.
 
 ### 2. RoPE (Rotary Position Embeddings with `rotate_half`)
 To match Llama-3's implementation and ensure open-weight alignment, embedding dimensions are split into two contiguous halves:
-$$\text{rotate\_half}(x) = \text{cat}\left( [-x[..., d_k/2:], \; x[..., :d_k/2]], \quad \text{dim}=-1 \right)$$
-$$\text{RoPE}(x, m) = x \odot \cos(m \theta) + \text{rotate\_half}(x) \odot \sin(m \theta)$$
+$$\operatorname{rotate\_half}(x) = \operatorname{concat}\left( -x_{d_k/2 : d_k}, \; x_{0 : d_k/2} \right)$$
+$$\operatorname{RoPE}(x, m) = x \odot \cos(m \theta) + \operatorname{rotate\_half}(x) \odot \sin(m \theta)$$
 
 Where $\theta_i = \theta_{\text{base}}^{-2i/d_k}$ with base frequency $\theta_{\text{base}} = 10,000.0$. For query at position $m$ and key at position $n$, the inner product $\mathbf{q}_m^T \mathbf{k}_n$ depends strictly on the relative distance $m - n$.
 
 ### 3. SwiGLU Feed-Forward Network
 All linear layers in the FFN are bias-free:
-$$\text{SwiGLU}(x) = \left( \text{SiLU}(x W_{\text{gate}}) \odot (x W_{\text{up}}) \right) W_{\text{down}}$$
+$$\operatorname{SwiGLU}(x) = \left( \operatorname{SiLU}(x W_{\text{gate}}) \odot (x W_{\text{up}}) \right) W_{\text{down}}$$
 
 Where $W_{\text{gate}}, W_{\text{up}} \in \mathbb{R}^{d \times d_{\text{ffn}}}$ and $W_{\text{down}} \in \mathbb{R}^{d_{\text{ffn}} \times d}$ with explicit $d_{\text{ffn}} = 768$.
 
@@ -81,7 +81,7 @@ Where $W_{\text{gate}}, W_{\text{up}} \in \mathbb{R}^{d \times d_{\text{ffn}}}$ 
 * **Query heads:** $H_Q = 8$, **Key/Value heads:** $H_{KV} = 2$ (grouping ratio $G = 4$).
 * **Cache Storage:** Only the raw, un-repeated keys and values ($H_{KV} = 2$) are stored in memory.
 * **Repetition:** After reading from cache, `torch.repeat_interleave(repeats=4, dim=1)` expands $K$ and $V$ to 8 heads immediately before computing attention against $Q$. This enforces a strict $4\times$ memory compression.
-* **Causal Mask Offset:** When prefilling with $\text{cur\_len} > 0$, the mask position offset is $\text{cur\_len} + i$.
+* **Causal Mask Offset:** When prefilling with context offset, query at relative position $i$ sits at absolute position $\text{start\_pos} + i$.
 
 ### 5. Algorithmic Complexity: KV Cache vs. Naive Generation
 * **Without KV Cache (Full Prefix Recomputation):**
@@ -93,7 +93,9 @@ Where $W_{\text{gate}}, W_{\text{up}} \in \mathbb{R}^{d \times d_{\text{ffn}}}$ 
   *The KV cache eliminates redundant prefix projections and FFN passes. Attention per token remains O(t).*
 
 ### 6. Analytical KV Cache Memory Scaling
-$$\text{KV Memory (bytes)} = 2 \times n_{\text{layers}} \times H_{KV} \times d_k \times L_{\text{seq}} \times \text{bytes\_per\_value}$$
+$$\text{Memory (bytes)} = 2 \cdot D \cdot H_{KV} \cdot d_k \cdot T \cdot B_{\text{elem}}$$
+
+Where $D$ is the depth (number of layers), $H_{KV}$ is the number of KV heads, $d_k$ is the head dimension, $T$ is the context length, and $B_{\text{elem}}$ is bytes per element (4 for FP32, 2 for FP16).
 
 ---
 
@@ -129,7 +131,7 @@ $$\text{KV Memory (bytes)} = 2 \times n_{\text{layers}} \times H_{KV} \times d_k
 
 ### 2. Analytical KV Cache Memory Scaling
 
-$$\text{KV Memory Footprint} = 2 \times \text{depth} \times B \times n_{\text{kv\_heads}} \times T \times d_k \times \text{bytes\_per\_elem}$$
+$$\text{Memory} = 2 \cdot D \cdot H_{KV} \cdot d_k \cdot T \cdot B_{\text{elem}}$$
 
 | Model Architecture | Layers | KV Heads ($H_{KV}$) | Head Dim ($d_k$) | Context ($T$) | Precision | KV Cache Footprint |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -183,7 +185,7 @@ cd modern_decoder_llm
 uv sync
 ```
 
-### 2. Run Test Suite (16 Automated Tests)
+### 2. Run Complete Test Suite (16 Automated Tests)
 ```bash
 uv run pytest -v
 ```
@@ -217,22 +219,6 @@ uv run python -m modern_decoder_llm.train
 4. **GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints** — Ainslie et al., 2023 ([arXiv:2305.13245](https://arxiv.org/abs/2305.13245))
 5. **Root Mean Square Layer Normalization (RMSNorm)** — Zhang & Sennrich, 2019 ([arXiv:1910.07467](https://arxiv.org/abs/1910.07467))
 6. **TinyStories: How Small Can Language Models Be and Still Speak Coherent English?** — Eldan & Li, 2023 ([arXiv:2305.07759](https://arxiv.org/abs/2305.07759))
-
----
-
-## ✍️ Author & Citation
-
-Built by **Hamza Sajid** ([@HamzA-1729](https://github.com/HamzA-1729)) as part of the *Deep Learning Foundations & Frontier Implementations from Scratch* series.
-
-```bibtex
-@misc{sajid2024moderndecoderllm,
-  author = {Sajid, Hamza},
-  title = {Modern Decoder LLM from Scratch: Llama-3 Architecture in PyTorch},
-  year = {2024},
-  publisher = {GitHub},
-  howpublished = {\url{https://github.com/HamzA-1729/modern_decoder_llm}}
-}
-```
 
 ---
 
